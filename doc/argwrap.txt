@@ -1,5 +1,3 @@
-This is a mirror of http://www.vim.org/scripts/script.php?script_id=5062
-
 *argwrap.txt* Wrap and unwrap function arguments, lists and dictionaries in Vim
 
                                   argwrap.vim
