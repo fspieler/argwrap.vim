@@ -7,9 +7,9 @@ information.
 
 *   [Homepage](http://foosoft.net/projects/vim-argwrap/)
 *   [GitHub](https://github.com/FooSoft/vim-argwrap/)
-*   [vim.org](http://www.vim.org/scripts/script.php?script_id=5062)
+*   [Vim.org](http://www.vim.org/scripts/script.php?script_id=5062)
 
-## Installation ##
+## Installation
 
 1.  Clone or otherwise download the latest version of the *argwrap.vim* extension from its
     [GitHub](https://github.com/FooSoft/vim-argwrap) page (the script is also available for download through
@@ -25,13 +25,14 @@ information.
     `nnoremap <silent> <leader>a :ArgWrap<CR>`
 
 3.  You can customize the wrapping/unwrapping behavior of this extension by setting values for any of the following
-    optional global variables in your `.vimrc` file:
+    optional buffer and global variables in your `.vimrc` file:
 
-    *   `g:argwrap_wrap_style`
+    *   `g:argwrap_wrap_closing_brace` or `b:argwrap_wrap_closing_brace`
 
-        Specifies the style in which arguments should be wrapped.
+        Specifies if the closing brace should be wrapped to a new line. This setting is helpful when working with
+        languages such as Google's [Go](https://golang.org/project/), which enforce coding style during compliation.
 
-        `'default'` argument wrapping:
+        Brace wrapping enabled (default)
 
         ```
         Foo(
@@ -41,16 +42,16 @@ information.
         )
         ```
 
-        `'bx'` argument wrapping:
+        Brace wrapping disabled (`let g:argwrap_wrap_closing_brace = 0`)
 
         ```
-        Foo(wibble
-            , wobble
-            , wubble
-            )
+        Foo(
+            wibble,
+            wobble,
+            wubble)
         ```
 
-    *   `g:argwrap_padded_braces`
+    *   `g:argwrap_padded_braces` or `b:argwrap_wrap_closing_brace`
 
         Specifies which brace types should be padded on the inside with spaces:
 
@@ -74,14 +75,14 @@ information.
         let g:argwrap_padded_braces = '[{'
         ```
 
-## Usage ##
+## Usage
 
 1.  Position the cursor *inside* of the scope of the parenthesis, brackets or curly braces you wish to wrap/unwrap (not
     on top, before or after them).
 
 2.  Execute the keyboard binding you defined above to *toggle* the wrapping and unwrapping of arguments.
 
-## Examples ##
+## Examples
 
 Below are some examples of common use cases demonstrating the capabilities of argwrap.vim. Note that the extension
 functions identically regardless if it is being applied to a function call, list or dictionary definition.
