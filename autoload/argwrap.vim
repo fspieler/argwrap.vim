@@ -26,9 +26,9 @@ function! argwrap#compareRanges(range1, range2)
     let [l:buffer, l:line, l:col, l:offset] = getpos('.')
 
     let l:lineDiff1 = a:range1.lineStart - l:line
-    let l:colDiff1  = a:range1.colStart - l:col
+    let l:colDiff1 = a:range1.colStart - l:col
     let l:lineDiff2 = a:range2.lineStart - l:line
-    let l:colDiff2  = a:range2.colStart - l:col
+    let l:colDiff2 = a:range2.colStart - l:col
 
     if l:lineDiff1 < l:lineDiff2
         return 1
@@ -44,8 +44,9 @@ function! argwrap#compareRanges(range1, range2)
 endfunction
 
 function! argwrap#findRange(braces)
-    let [l:lineStart, l:colStart] = searchpairpos(a:braces[0], '', a:braces[1], 'Wnb')
-    let [l:lineEnd,   l:colEnd]   = searchpairpos(a:braces[0], '', a:braces[1], 'Wcn')
+    let l:filter = 'synIDattr(synID(line("."), col("."), 0), "name") =~? "string"'
+    let [l:lineStart, l:colStart] = searchpairpos(a:braces[0], '', a:braces[1], 'Wnb', filter)
+    let [l:lineEnd, l:colEnd] = searchpairpos(a:braces[0], '', a:braces[1], 'Wcn', filter)
     return {'lineStart': l:lineStart, 'colStart': l:colStart, 'lineEnd': l:lineEnd, 'colEnd': l:colEnd}
 endfunction
 
@@ -82,8 +83,10 @@ function! argwrap#extractContainerArgText(range)
         endif
 
         if l:extractStart < l:extractEnd
-            let l:extract  = l:lineText[l:extractStart : l:extractEnd - 1]
-            let l:text    .= substitute(l:extract, '^\s*\(.\{-}\)\s*$', '\1 ', '')
+            let l:extract = l:lineText[l:extractStart : l:extractEnd - 1]
+            let l:extract = substitute(l:extract, '^\s*\(.\{-}\)\s*$', '\1', '')
+            let l:extract = substitute(l:extract, ',$', ', ', '')
+            let l:text .= l:extract
         endif
     endfor
 
@@ -91,7 +94,7 @@ function! argwrap#extractContainerArgText(range)
 endfunction
 
 function! argwrap#updateScope(stack, char)
-    let l:pairs  = {'"': '"', '''': '''', ')': '(', ']': '[', '}': '{'}
+    let l:pairs = {'"': '"', '''': '''', ')': '(', ']': '[', '}': '{'}
     let l:length = len(a:stack)
 
     if l:length > 0 && get(l:pairs, a:char, '') == a:stack[l:length - 1]
@@ -108,29 +111,40 @@ function! argwrap#trimArgument(text)
 endfunction
 
 function! argwrap#extractContainerArgs(text)
-    let l:stack     = []
+    let l:text = substitute(a:text, '^\s*\(.\{-}\)\s*$', '\1', '')
+
+    let l:stack = []
     let l:arguments = []
-    let l:argument  = ''
+    let l:argument = ''
 
-    for l:index in range(strlen(a:text))
-        let l:char = a:text[l:index]
-        call argwrap#updateScope(l:stack, l:char)
+    if len(l:text) > 0
+        for l:index in range(strlen(l:text))
+            let l:char = l:text[l:index]
+            call argwrap#updateScope(l:stack, l:char)
 
-        if len(l:stack) == 0 && l:char == ','
-            call add(l:arguments, argwrap#trimArgument(l:argument))
-            let l:argument = ''
-        else
-            let l:argument .= l:char
+            if len(l:stack) == 0 && l:char == ','
+                let l:argument = argwrap#trimArgument(l:argument)
+                if len(l:argument) > 0
+                    call add(l:arguments, l:argument)
+                endif
+                let l:argument = ''
+            else
+                let l:argument .= l:char
+            endif
+        endfor
+
+        let l:argument = argwrap#trimArgument(l:argument)
+        if len(l:argument) > 0
+            call add(l:arguments, l:argument)
         endif
-    endfor
+    endif
 
-    call add(l:arguments, argwrap#trimArgument(l:argument))
     return l:arguments
 endfunction
 
 function! argwrap#extractContainer(range)
     let l:textStart = getline(a:range.lineStart)
-    let l:textEnd   = getline(a:range.lineEnd)
+    let l:textEnd = getline(a:range.lineEnd)
 
     let l:indent = matchstr(l:textStart, '\s*')
     let l:prefix = l:textStart[strlen(l:indent) : a:range.colStart - 1]
@@ -141,7 +155,7 @@ endfunction
 
 function! argwrap#wrapContainer(range, container, arguments, wrapBrace)
     let l:argCount = len(a:arguments)
-    let l:line     = a:range.lineStart
+    let l:line = a:range.lineStart
 
     call setline(l:line, a:container.indent . a:container.prefix)
 
@@ -200,7 +214,7 @@ function! argwrap#toggle()
         return
     endif
 
-    let l:argText   = argwrap#extractContainerArgText(l:range)
+    let l:argText = argwrap#extractContainerArgText(l:range)
     let l:arguments = argwrap#extractContainerArgs(l:argText)
     if len(l:arguments) == 0
         return
