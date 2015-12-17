@@ -66,7 +66,7 @@ function! argwrap#findClosestRange()
     endif
 endfunction
 
-function! argwrap#extractContainerArgText(range)
+function! argwrap#extractContainerArgText(range, linePrefix)
     let l:text = ''
 
     for l:lineIndex in range(a:range.lineStart, a:range.lineEnd)
@@ -85,6 +85,9 @@ function! argwrap#extractContainerArgText(range)
         if l:extractStart < l:extractEnd
             let l:extract = l:lineText[l:extractStart : l:extractEnd - 1]
             let l:extract = substitute(l:extract, '^\s*\(.\{-}\)\s*$', '\1', '')
+            if stridx(l:extract, a:linePrefix) == 0
+                let l:extract = l:extract[len(a:linePrefix):]
+            endif
             let l:extract = substitute(l:extract, ',$', ', ', '')
             let l:text .= l:extract
         endif
@@ -153,15 +156,15 @@ function! argwrap#extractContainer(range)
     return {'indent': l:indent, 'prefix': l:prefix, 'suffix': l:suffix}
 endfunction
 
-function! argwrap#wrapContainer(range, container, arguments, wrapBrace)
+function! argwrap#wrapContainer(range, container, arguments, wrapBrace, tailComma, linePrefix)
     let l:argCount = len(a:arguments)
     let l:line = a:range.lineStart
 
     call setline(l:line, a:container.indent . a:container.prefix)
 
     for l:index in range(l:argCount)
-        let l:text = a:container.indent . a:arguments[l:index]
-        if l:index < l:argCount - 1
+        let l:text =  a:container.indent . a:linePrefix . a:arguments[l:index]
+        if l:index < l:argCount - 1 || a:tailComma
             let l:text .= ','
         elseif !a:wrapBrace
             let l:text .= a:container.suffix
@@ -173,7 +176,7 @@ function! argwrap#wrapContainer(range, container, arguments, wrapBrace)
     endfor
 
     if a:wrapBrace
-        call append(l:line, a:container.indent . a:container.suffix)
+        call append(l:line, a:container.indent . a:linePrefix . a:container.suffix)
     endif
 endfunction
 
@@ -190,31 +193,33 @@ function! argwrap#unwrapContainer(range, container, arguments, padded)
     exec printf('silent %d,%dd_', a:range.lineStart + 1, a:range.lineEnd)
 endfunction
 
+function! argwrap#getSetting(name, default)
+    let l:bName = 'b:argwrap_' . a:name
+    let l:gName = 'g:argwrap_' . a:name
+
+    if exists(l:bName)
+        return {l:bName}
+    elseif exists(l:gName)
+        return {l:gName}
+    else
+        return a:default
+    endif
+endfunction
+
 function! argwrap#toggle()
-    if exists('b:argwrap_wrap_closing_brace')
-        let l:wrapBrace = b:argwrap_wrap_closing_brace
-    elseif exists('g:argwrap_wrap_closing_brace')
-        let l:wrapBrace = g:argwrap_wrap_closing_brace
-    else
-        let l:wrapBrace = 1
-    endif
-
-    if exists('b:argwrap_padded_braces')
-        let l:padded = b:argwrap_padded_braces
-    elseif exists('g:argwrap_padded_braces')
-        let l:padded = g:argwrap_padded_braces
-    else
-        let l:padded = ''
-    endif
-
     let l:cursor = getpos('.')
+
+    let l:linePrefix = argwrap#getSetting('line_prefix', '')
+    let l:padded = argwrap#getSetting('padded_braces', '')
+    let l:tailComma = argwrap#getSetting('tail_comma', 0)
+    let l:wrapBrace = argwrap#getSetting('wrap_closing_brace', 1)
 
     let l:range = argwrap#findClosestRange()
     if !argwrap#validateRange(l:range)
         return
     endif
 
-    let l:argText = argwrap#extractContainerArgText(l:range)
+    let l:argText = argwrap#extractContainerArgText(l:range, l:linePrefix)
     let l:arguments = argwrap#extractContainerArgs(l:argText)
     if len(l:arguments) == 0
         return
@@ -222,7 +227,7 @@ function! argwrap#toggle()
 
     let l:container = argwrap#extractContainer(l:range)
     if l:range.lineStart == l:range.lineEnd
-        call argwrap#wrapContainer(l:range, l:container, l:arguments, l:wrapBrace)
+        call argwrap#wrapContainer(l:range, l:container, l:arguments, l:wrapBrace, l:tailComma, l:linePrefix)
     else
         call argwrap#unwrapContainer(l:range, l:container, l:arguments, l:padded)
     endif
